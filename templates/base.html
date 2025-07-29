@@ -1,13 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"> <!-- character encoding -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- responsive scaling -->
-    <title>Notes App</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Notes App{% endblock %}</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-    <h1>Notes App</h1>
+
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Navbar -->
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <a href="{{ url_for('home') }}" class="text-2xl font-bold text-blue-600">NotesApp</a>
+    
+    <div class="space-x-4">
+      {% if 'user_id' in session %}
+        <span class="text-gray-700">Hello, {{ session['username'] }}</span>
+        <a href="{{ url_for('dashboard') }}" class="text-blue-600 hover:underline">Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="text-red-500 hover:underline">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="text-blue-600 hover:underline">Login</a>
+        <a href="{{ url_for('signup') }}" class="text-green-600 hover:underline">Sign Up</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Page content wrapper -->
+  <div class="max-w-3xl mx-auto p-6">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-6 space-y-3">
+          {% for category, message in messages %}
+            <div class="p-3 rounded 
+              {% if category == 'success' %}
+                bg-green-100 text-green-800
+              {% elif category == 'danger' %}
+                bg-red-100 text-red-800
+              {% elif category == 'info' %}
+                bg-blue-100 text-blue-800
+              {% elif category == 'warning' %}
+                bg-yellow-100 text-yellow-800
+              {% else %}
+                bg-gray-100 text-gray-800
+              {% endif %}
+            ">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Main page content -->
     {% block content %}{% endblock %}
+
+  </div>
+
 </body>
 </html>
