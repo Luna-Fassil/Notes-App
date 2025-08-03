@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Notes App{% endblock %}</title>
-  
-  <!-- Tailwind CSS via CDN -->
+
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
-
 <body class="bg-gray-50 text-gray-800">
 
   <!-- Navbar -->
   <nav class="bg-white shadow p-4 flex justify-between items-center">
-    <a href="{{ url_for('home') }}" class="text-2xl font-bold text-blue-600">NotesApp</a>
-    
+    <!-- Changed 'home' to 'index' -->
+    <a href="{{ url_for('index') }}" class="text-2xl font-bold text-blue-600">NotesApp</a>
+
     <div class="space-x-4">
       {% if 'user_id' in session %}
         <span class="text-gray-700">Hello, {{ session['username'] }}</span>
@@ -30,7 +30,7 @@
     </div>
   </nav>
 
-  <!-- Page content wrapper -->
+  <!-- Page container -->
   <div class="max-w-3xl mx-auto p-6">
 
     <!-- Flash messages -->
@@ -38,7 +38,7 @@
       {% if messages %}
         <div class="mb-6 space-y-3">
           {% for category, message in messages %}
-            <div class="p-3 rounded 
+            <div class="p-3 rounded
               {% if category == 'success' %}
                 bg-green-100 text-green-800
               {% elif category == 'danger' %}
@@ -58,7 +58,7 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Main page content -->
+    <!-- Main content -->
     {% block content %}{% endblock %}
 
   </div>

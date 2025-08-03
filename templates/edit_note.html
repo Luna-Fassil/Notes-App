@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Edit Note{% endblock %}
+{% block content %}
+<h2 class="text-2xl font-bold mb-4">Edit Note</h2>
+<form method="POST" class="space-y-4">
+  <input type="text" name="title" value="{{ note.title }}" required class="w-full p-3 border rounded">
+  <textarea name="content" required class="w-full p-3 border rounded" rows="6">{{ note.content }}</textarea>
+  <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update</button>
+</form>
+{% endblock %}

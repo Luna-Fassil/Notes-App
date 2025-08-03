@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h2 class="text-2xl font-bold mb-4">Your Notes</h2>
+<a href="{{ url_for('add_note') }}" class="mb-6 inline-block bg-green-600 text-white p-2 rounded hover:bg-green-700">+ New Note</a>
+{% if notes %}
+  <div class="space-y-4">
+    {% for note in notes %}
+      <div class="border p-4 rounded shadow">
+        <h3 class="font-bold text-lg">{{ note.title }}</h3>
+        <p class="mt-2 text-gray-700">{{ note.content }}</p>
+        <div class="mt-4 space-x-3">
+          <a href="{{ url_for('edit_note', id=note.id) }}" class="text-blue-600">Edit</a>
+          <form action="{{ url_for('delete_note', id=note.id) }}" method="POST" class="inline">
+            <button type="submit" class="text-red-500">Delete</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-gray-600">You don't have any notes yet.</p>
+{% endif %}
+{% endblock %}

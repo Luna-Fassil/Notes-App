@@ -1,11 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import sqlite3
-from datetime import timedelta
+import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # important for session
-app.permanent_session_lifetime = timedelta(days=7)  # for 'remember me'
+app.secret_key = os.urandom(24)
 
 DB_NAME = "notes.db"
 
@@ -19,8 +18,7 @@ def init_db():
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
+                username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL
             )
         """)
@@ -30,132 +28,102 @@ def init_db():
                 user_id INTEGER NOT NULL,
                 title TEXT NOT NULL,
                 content TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id)
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
         conn.commit()
 
-# Home
 @app.route('/')
-def home():
+def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
-# Signup
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         username = request.form['username']
-        email = request.form['email']
         password = generate_password_hash(request.form['password'])
-
-        with get_db_connection() as conn:
-            try:
-                conn.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", 
-                             (username, email, password))
+        try:
+            with get_db_connection() as conn:
+                conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
                 conn.commit()
-                flash('Account created! Please log in.', 'success')
-                return redirect(url_for('login'))
-            except sqlite3.IntegrityError:
-                flash('Email already exists.', 'danger')
-
+            flash('Signup successful! Please log in.', 'success')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Username already exists.', 'error')
     return render_template('signup.html')
 
-# Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form['email']
+        username = request.form['username']
         password = request.form['password']
-        remember = 'remember' in request.form
-
         with get_db_connection() as conn:
-            user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+            user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
             if user and check_password_hash(user['password'], password):
-                session.permanent = remember
                 session['user_id'] = user['id']
-                session['username'] = user['username']
-                flash('Welcome back!', 'success')
+                flash('Logged in successfully!', 'success')
                 return redirect(url_for('dashboard'))
             else:
-                flash('Invalid email or password.', 'danger')
-
+                flash('Invalid credentials.', 'error')
     return render_template('login.html')
 
-# Logout
 @app.route('/logout')
 def logout():
-    session.clear()
+    session.pop('user_id', None)
     flash('You have been logged out.', 'info')
-    return redirect(url_for('home'))
+    return redirect(url_for('index'))
 
-# Dashboard / Notes List
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
     with get_db_connection() as conn:
-        notes = conn.execute("SELECT * FROM notes WHERE user_id = ? ORDER BY created_at DESC", 
-                             (session['user_id'],)).fetchall()
+        notes = conn.execute("SELECT * FROM notes WHERE user_id = ?", (session['user_id'],)).fetchall()
     return render_template('dashboard.html', notes=notes)
 
-# Add Note
 @app.route('/add', methods=['GET', 'POST'])
 def add_note():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
         with get_db_connection() as conn:
-            conn.execute("INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)",
-                         (session['user_id'], title, content))
+            conn.execute("INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)", (session['user_id'], title, content))
             conn.commit()
-        flash('Note added!', 'success')
         return redirect(url_for('dashboard'))
-
     return render_template('add_note.html')
 
-# Delete Note
-@app.route('/delete/<int:id>', methods=['POST'])
-def delete_note(id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    with get_db_connection() as conn:
-        conn.execute("DELETE FROM notes WHERE id = ? AND user_id = ?", (id, session['user_id']))
-        conn.commit()
-    flash('Note deleted.', 'info')
-    return redirect(url_for('dashboard'))
-
-# Edit Note
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit_note(id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
     with get_db_connection() as conn:
-        note = conn.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", 
-                            (id, session['user_id'])).fetchone()
-
+        note = conn.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", (id, session['user_id'])).fetchone()
         if not note:
-            flash('Note not found.', 'warning')
-            return redirect(url_for('dashboard'))
-
+            return render_template('404.html'), 404
         if request.method == 'POST':
             title = request.form['title']
             content = request.form['content']
-            conn.execute("UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = ?",
-                         (title, content, id, session['user_id']))
+            conn.execute("UPDATE notes SET title = ?, content = ? WHERE id = ?", (title, content, id))
             conn.commit()
-            flash('Note updated!', 'success')
             return redirect(url_for('dashboard'))
-
     return render_template('edit_note.html', note=note)
+
+@app.route('/delete/<int:id>', methods=['POST'])
+def delete_note(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    with get_db_connection() as conn:
+        conn.execute("DELETE FROM notes WHERE id = ? AND user_id = ?", (id, session['user_id']))
+        conn.commit()
+    return redirect(url_for('dashboard'))
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
 if __name__ == '__main__':
     init_db()
